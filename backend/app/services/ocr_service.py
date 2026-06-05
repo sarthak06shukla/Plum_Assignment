@@ -135,8 +135,13 @@ class OCRService:
         image = Image.open(path).convert("RGB")
         gray = ImageOps.grayscale(image)
         gray = ImageEnhance.Contrast(gray).enhance(1.8)
-        scale = 3 if platform.system().lower() == "windows" else 2
-        gray = gray.resize((gray.width * scale, gray.height * scale), Image.Resampling.LANCZOS)
+        if platform.system().lower() == "windows":
+            scale = 3
+        else:
+            longest_side = max(gray.width, gray.height)
+            target_longest_side = 1700
+            scale = min(2.0, max(1.0, target_longest_side / longest_side))
+        gray = gray.resize((round(gray.width * scale), round(gray.height * scale)), Image.Resampling.LANCZOS)
         gray = gray.filter(ImageFilter.SHARPEN)
 
         temp = tempfile.NamedTemporaryFile(prefix="plum_ocr_", suffix=".png", delete=False)

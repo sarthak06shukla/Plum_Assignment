@@ -169,19 +169,34 @@ def get_processing(claim_id: str, db: Session = Depends(get_db), user: User = De
 
 
 def ensure_processing_started(db: Session, claim: Claim) -> None:
-    if claim.status not in {ClaimStatus.SUBMITTED, ClaimStatus.PROCESSING}:
+    should_retry_empty_ocr = _should_retry_empty_ocr_claim(claim)
+    if claim.status not in {ClaimStatus.SUBMITTED, ClaimStatus.PROCESSING} and not should_retry_empty_ocr:
         return
     if not claim.documents:
         return
-    if claim.decision_logs or claim.extracted_fields:
+    if not should_retry_empty_ocr and (claim.decision_logs or claim.extracted_fields):
         return
-    if claim.status == ClaimStatus.SUBMITTED:
+    if claim.status != ClaimStatus.PROCESSING:
         claim.status = ClaimStatus.PROCESSING
         claim.processing_stage = "OCR Processing"
+        claim.confidence_score = 0
         claim.updated_at = utcnow()
         db.commit()
         db.refresh(claim)
     enqueue_claim_processing(claim.id)
+
+
+def _should_retry_empty_ocr_claim(claim: Claim) -> bool:
+    if claim.status != ClaimStatus.MANUAL_REVIEW:
+        return False
+    if not claim.documents:
+        return False
+    if any((document.ocr_text or "").strip() for document in claim.documents):
+        return False
+    if any((document.ocr_confidence or 0) > 15 for document in claim.documents):
+        return False
+    fields = claim.extracted_fields.fields if claim.extracted_fields else {}
+    return not fields.get("patient_name") and not fields.get("diagnosis") and not fields.get("bill_amount")
 
 
 def serialize_claim_summary(claim: Claim) -> ClaimSummary:
