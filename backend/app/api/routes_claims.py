@@ -282,14 +282,30 @@ def processing_stages(claim: Claim) -> list[ProcessingStage]:
     ]
     names = [stage[0] for stage in stages]
     completed_until = names.index(claim.processing_stage) if claim.processing_stage in names else len(names) - 1
+    is_final = claim.status not in {ClaimStatus.SUBMITTED, ClaimStatus.PROCESSING}
+
+    def stage_status(index: int) -> str:
+        if is_final or index < completed_until:
+            return "Completed"
+        if index == completed_until:
+            return "Processing"
+        return "Pending"
+
+    def stage_progress(index: int) -> int:
+        if is_final or index < completed_until:
+            return 100
+        if index == completed_until:
+            return 60
+        return 0
+
     return [
         ProcessingStage(
             name=name,
-            status="Completed" if index <= completed_until else "Pending",
+            status=stage_status(index),
             detail=detail,
-            progress=100 if index <= completed_until else 0,
+            progress=stage_progress(index),
             started_at=claim.created_at if index <= completed_until else None,
-            completed_at=claim.updated_at if index <= completed_until else None,
+            completed_at=claim.updated_at if is_final or index < completed_until else None,
             confidence_score=claim.confidence_score if name == "Decision Generation" else None,
         )
         for index, (name, detail) in enumerate(stages)

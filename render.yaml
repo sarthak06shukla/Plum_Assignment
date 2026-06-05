@@ -18,7 +18,7 @@ services:
       - key: CORS_ORIGIN_REGEX
         value: ""
       - key: EASYOCR_DOWNLOAD_ENABLED
-        value: "true"
+        value: "false"
       - key: OPENAI_MODEL
         value: gpt-4o
 

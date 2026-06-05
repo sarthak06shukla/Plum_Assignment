@@ -15,17 +15,19 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { api } from "@/lib/api";
 
+const terminalStatuses = ["APPROVED", "REJECTED", "PARTIAL", "PARTIAL_APPROVAL", "MANUAL_REVIEW"];
+
 export default function ClaimProcessingClient() {
   const params = useParams<{ id: string }>();
   const [stages, setStages] = useState<any[]>([]);
   const [claim, setClaim] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const isFinal = claim ? terminalStatuses.includes(claim.status) : false;
 
   useEffect(() => {
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout> | null = null;
-    const terminalStatuses = ["APPROVED", "REJECTED", "PARTIAL", "PARTIAL_APPROVAL", "MANUAL_REVIEW"];
 
     async function load() {
       try {
@@ -84,7 +86,7 @@ export default function ClaimProcessingClient() {
         </div>
         {claim?.confidence_score != null && (
           <div className="text-sm font-medium numeric">
-            {claim.confidence_score}% confidence
+            {isFinal ? `${claim.confidence_score}% confidence` : "Processing..."}
           </div>
         )}
       </div>
@@ -111,7 +113,7 @@ export default function ClaimProcessingClient() {
           <CardContent className="space-y-4">
             <Progress value={claim?.confidence_score ?? 0} />
             <div className="text-3xl font-semibold numeric">
-              {claim?.confidence_score ?? 0}%
+              {isFinal ? `${claim?.confidence_score ?? 0}%` : "Processing"}
             </div>
             {claim?.decision_explanation && (
               <p className="whitespace-pre-line text-sm text-muted-foreground">

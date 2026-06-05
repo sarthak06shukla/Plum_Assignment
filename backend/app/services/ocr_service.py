@@ -150,7 +150,7 @@ class OCRService:
         from PIL import Image
 
         with Image.open(path) as image:
-            raw_text = self._normalize_text(pytesseract.image_to_string(image, config="--psm 6"))
+            raw_text = self._normalize_text(pytesseract.image_to_string(image, config="--oem 1 --psm 6", timeout=90))
         return OCRResult(raw_text=raw_text, confidence_score=self._heuristic_image_confidence(raw_text))
 
     def _extract_image_with_windows_ocr(self, path: Path) -> OCRResult:
