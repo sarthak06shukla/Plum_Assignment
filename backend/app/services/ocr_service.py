@@ -1,5 +1,6 @@
 import hashlib
 import logging
+import os
 import re
 import subprocess
 import tempfile
@@ -105,13 +106,14 @@ class OCRService:
                     logger.warning("Could not delete OCR temp file %s", preprocessed_path)
 
         try:
-            if not self._easyocr_models_available():
+            download_enabled = os.getenv("EASYOCR_DOWNLOAD_ENABLED", "").lower() == "true"
+            if not download_enabled and not self._easyocr_models_available():
                 logger.warning("EasyOCR model files are not available locally; skipping network-dependent fallback for %s", path)
                 return OCRResult(raw_text="", confidence_score=15)
 
             import easyocr
 
-            reader = easyocr.Reader(["en"], gpu=False, download_enabled=False, verbose=False)
+            reader = easyocr.Reader(["en"], gpu=False, download_enabled=download_enabled, verbose=False)
             fragments = reader.readtext(str(path))
             raw_text = self._normalize_text("\n".join(fragment[1] for fragment in fragments))
             confidences = [float(fragment[2]) for fragment in fragments]

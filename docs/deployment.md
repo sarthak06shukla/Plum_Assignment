@@ -1,69 +1,87 @@
 # Deployment Guide
 
-## Backend on Railway
+## Backend on Render
 
-### 1. Create a Railway Project
+This repository includes a Render Blueprint at `render.yaml`.
 
-- Create a new project at [railway.app](https://railway.app).
-- Add a **PostgreSQL** service (Railway provisions and manages it).
-- Add a **Redis** service.
+### 1. Create the Render Blueprint
 
-### 2. Deploy the Backend
+- Open [Render Blueprints](https://dashboard.render.com/blueprints).
+- Select this GitHub repository: `sarthak06shukla/Plum_Assignment`.
+- Render will create:
+  - `plum-assignment-backend` web service
+  - `plum-assignment-db` PostgreSQL database
 
-- Connect your repository.
-- Set the Dockerfile path to `docker/backend.Dockerfile`.
-- Railway builds and deploys automatically on push.
+The backend uses `docker/backend.Dockerfile` and starts with Render's `$PORT`.
 
-### 3. Configure Environment Variables
+### 2. Configure Environment Variables
 
-Set these in the Railway service settings:
+The blueprint sets the required deployment variables:
 
 | Variable | Value |
 |----------|-------|
-| `DATABASE_URL` | Provided by Railway's PostgreSQL service (use the `postgresql+psycopg://` format) |
-| `REDIS_URL` | Provided by Railway's Redis service |
-| `JWT_SECRET` | A strong, randomly generated secret (e.g., `openssl rand -hex 32`) |
-| `OPENAI_API_KEY` | Your OpenAI API key |
+| `DATABASE_URL` | From Render PostgreSQL |
+| `JWT_SECRET` | Auto-generated |
+| `CORS_ORIGINS` | GitHub Pages frontend URL |
+| `EASYOCR_DOWNLOAD_ENABLED` | `true` |
+| `SEED_DEMO_ON_START` | `true` |
 | `OPENAI_MODEL` | `gpt-4o` |
-| `CORS_ORIGINS` | Your Vercel frontend URL (e.g., `https://plum.vercel.app`) |
 
-### 4. Database Setup
+Optional:
 
-Railway provisions PostgreSQL automatically. Tables are created on first backend startup via SQLAlchemy's `create_all`.
+| Variable | Value |
+|----------|-------|
+| `OPENAI_API_KEY` | Your OpenAI API key, if you want OpenAI extraction instead of the local fallback |
 
-To seed demo data (demo environments only):
+### 3. Database Setup
 
-```bash
-railway run python -m backend.seed.seed_demo
-```
+Tables are created on first backend startup via SQLAlchemy's `create_all`.
+When `SEED_DEMO_ON_START=true`, demo users and sample claims are seeded idempotently.
 
-### 5. Verify
+Demo credentials:
+
+| Role | Email | Password |
+|------|-------|----------|
+| Admin | `admin@plum.demo` | `admin123` |
+| Member | `member@plum.demo` | `member123` |
+
+### 4. Verify
 
 Check the health endpoint:
 
 ```bash
-curl https://your-backend.up.railway.app/health
+curl https://your-render-service.onrender.com/health
 # {"status": "ok"}
 ```
 
 ---
 
-## Frontend on Vercel
+## Frontend on GitHub Pages
 
-### 1. Import the Repository
+The frontend is deployed by `.github/workflows/deploy-frontend-pages.yml`.
 
-- Import your repository in the [Vercel dashboard](https://vercel.com).
-- Set the **Root Directory** to `frontend`.
+### 1. Enable Pages
 
-### 2. Configure Environment Variables
+- In GitHub, go to **Settings -> Pages**.
+- Set **Build and deployment** to **GitHub Actions**.
+
+### 2. Configure Frontend API URL
+
+In **Settings -> Secrets and variables -> Actions -> Variables**, add:
 
 | Variable | Value |
 |----------|-------|
-| `NEXT_PUBLIC_API_BASE_URL` | Your Railway backend URL (e.g., `https://your-backend.up.railway.app`) |
+| `NEXT_PUBLIC_API_URL` | Your Render backend URL |
 
 ### 3. Deploy
 
-Vercel auto-detects Next.js and uses the default build command (`next build`). Deploy on push.
+Push to `main` or manually run the `Deploy frontend to GitHub Pages` workflow.
+
+Frontend URL:
+
+```text
+https://sarthak06shukla.github.io/Plum_Assignment/
+```
 
 ---
 

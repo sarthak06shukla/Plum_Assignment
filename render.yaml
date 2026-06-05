@@ -1,0 +1,29 @@
+services:
+  - type: web
+    name: plum-assignment-backend
+    runtime: docker
+    plan: free
+    dockerfilePath: ./docker/backend.Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: plum-assignment-db
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: CORS_ORIGINS
+        value: https://sarthak06shukla.github.io,https://sarthak06shukla.github.io/Plum_Assignment
+      - key: EASYOCR_DOWNLOAD_ENABLED
+        value: "true"
+      - key: SEED_DEMO_ON_START
+        value: "true"
+      - key: OPENAI_MODEL
+        value: gpt-4o
+
+databases:
+  - name: plum-assignment-db
+    plan: free
+    databaseName: plum
+    user: plum
