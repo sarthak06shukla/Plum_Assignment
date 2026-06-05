@@ -1,0 +1,50 @@
+[
+  {
+    "id": "CLM-1001",
+    "patient_name": "Aarav Sharma",
+    "status": "APPROVED",
+    "claimed_amount": 1850,
+    "approved_amount": 1850,
+    "confidence_score": 91,
+    "doctor_registration_number": "MH/12345/2019",
+    "diagnosis": "Viral fever",
+    "hospital_name": "CityCare Clinic",
+    "treatment_date": "2026-05-14"
+  },
+  {
+    "id": "CLM-1002",
+    "patient_name": "Meera Iyer",
+    "status": "PARTIAL",
+    "claimed_amount": 4200,
+    "approved_amount": 2730,
+    "confidence_score": 89,
+    "doctor_registration_number": "KA/55321/2018",
+    "diagnosis": "Root canal with teeth whitening",
+    "hospital_name": "Apollo OPD Center",
+    "treatment_date": "2026-05-18"
+  },
+  {
+    "id": "CLM-1003",
+    "patient_name": "Rohan Verma",
+    "status": "MANUAL_REVIEW",
+    "claimed_amount": 4200,
+    "approved_amount": 4200,
+    "confidence_score": 64,
+    "doctor_registration_number": "BAD-REG-77",
+    "diagnosis": "Upper respiratory infection",
+    "hospital_name": "Metro Diagnostic Center",
+    "treatment_date": "2026-05-19"
+  },
+  {
+    "id": "CLM-1004",
+    "patient_name": "Nisha Rao",
+    "status": "REJECTED",
+    "claimed_amount": 7500,
+    "approved_amount": 0,
+    "confidence_score": 83,
+    "doctor_registration_number": "DL/77890/2020",
+    "diagnosis": "Migraine consultation above per-claim limit",
+    "hospital_name": "Plum Network Clinic",
+    "treatment_date": "2026-05-21"
+  }
+]

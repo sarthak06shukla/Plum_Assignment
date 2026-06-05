@@ -1,0 +1,24 @@
+{
+  "policy_id": "PLUM-OPD-2026",
+  "annual_limit": 25000,
+  "per_claim_limit": 5000,
+  "waiting_period_days": 30,
+  "covered_services": ["consultation", "pharmacy", "diagnostics", "minor procedure", "root canal"],
+  "exclusions": ["cosmetic", "experimental", "teeth whitening", "whitening", "non-medical supplies"],
+  "mixed_exclusion_reduction_percent": 35,
+  "category_sub_limits": {
+    "consultation": 1000,
+    "pharmacy": 3000,
+    "diagnostics": 2500,
+    "minor_procedure": 2000
+  },
+  "network_provider_rule": "IN_NETWORK_OR_APPROVED_OUT_OF_NETWORK",
+  "network_providers": [
+    "CityCare Clinic",
+    "Plum Network Clinic",
+    "Apollo OPD Center",
+    "Metro Diagnostic Center"
+  ],
+  "doctor_registration_regex": "^[A-Z]{2}/[0-9]{5}/[0-9]{4}$",
+  "manual_review_threshold": 70
+}

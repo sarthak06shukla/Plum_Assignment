@@ -1,0 +1,15 @@
+node_modules/
+.next/
+__pycache__/
+.pytest_cache/
+.venv/
+backend/uploads/
+*.pyc
+.env
+*.log
+*.db
+*.sqlite
+*.sqlite3
+medicalbill-1.jpg
+frontend/.next/
+frontend/node_modules/

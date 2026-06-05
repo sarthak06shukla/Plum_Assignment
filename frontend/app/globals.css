@@ -1,0 +1,28 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: 0 0% 98%;
+  --foreground: 220 18% 11%;
+  --card: 0 0% 100%;
+  --card-foreground: 220 18% 11%;
+  --muted: 220 14% 94%;
+  --muted-foreground: 220 8% 42%;
+  --border: 220 12% 86%;
+  --input: 220 12% 86%;
+  --ring: 174 62% 32%;
+}
+
+* {
+  border-color: hsl(var(--border));
+}
+
+body {
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+}
+
+.numeric {
+  font-variant-numeric: tabular-nums;
+}
