@@ -1,5 +1,6 @@
 import logging
-from threading import Thread
+from concurrent.futures import ThreadPoolExecutor
+from threading import Lock
 from typing import Annotated
 from pathlib import Path
 
@@ -31,6 +32,9 @@ processor = ClaimProcessor()
 storage = DocumentUploadService()
 audit = AuditService()
 logger = logging.getLogger(__name__)
+processing_executor = ThreadPoolExecutor(max_workers=1)
+processing_claim_ids: set[str] = set()
+processing_lock = Lock()
 
 
 @router.post("", response_model=ClaimDetail)
@@ -69,11 +73,22 @@ async def submit_claim(
         db.rollback()
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
+    claim.status = ClaimStatus.PROCESSING
+    claim.processing_stage = "OCR Processing"
+    claim.updated_at = utcnow()
     audit.log(db, actor_id=user.id, entity_type="Claim", entity_id=claim.id, action="SUBMIT_CLAIM", payload={})
     db.commit()
     db.refresh(claim)
-    Thread(target=process_claim_background, args=(claim.id,), daemon=True).start()
+    enqueue_claim_processing(claim.id)
     return serialize_claim_detail(claim)
+
+
+def enqueue_claim_processing(claim_id: str) -> None:
+    with processing_lock:
+        if claim_id in processing_claim_ids:
+            return
+        processing_claim_ids.add(claim_id)
+    processing_executor.submit(process_claim_background, claim_id)
 
 
 def process_claim_background(claim_id: str) -> None:
@@ -92,6 +107,8 @@ def process_claim_background(claim_id: str) -> None:
         _mark_claim_processing_failed(claim_id)
     finally:
         db.close()
+        with processing_lock:
+            processing_claim_ids.discard(claim_id)
 
 
 def _mark_claim_processing_failed(claim_id: str) -> None:
@@ -123,6 +140,8 @@ def _mark_claim_processing_failed(claim_id: str) -> None:
 @router.get("", response_model=list[ClaimSummary])
 def list_claims(db: Session = Depends(get_db), user: User = Depends(get_current_user)) -> list[ClaimSummary]:
     rows = db.scalars(select(Claim).where(Claim.user_id == user.id).order_by(Claim.created_at.desc())).all()
+    for claim in rows:
+        ensure_processing_started(db, claim)
     return [serialize_claim_summary(claim) for claim in rows]
 
 
@@ -131,6 +150,7 @@ def get_claim(claim_id: str, db: Session = Depends(get_db), user: User = Depends
     claim = db.get(Claim, claim_id)
     if not claim or (claim.user_id != user.id and user.role != UserRole.ADMIN):
         raise HTTPException(status_code=404, detail="Claim not found")
+    ensure_processing_started(db, claim)
     return serialize_claim_detail(claim)
 
 
@@ -139,7 +159,24 @@ def get_processing(claim_id: str, db: Session = Depends(get_db), user: User = De
     claim = db.get(Claim, claim_id)
     if not claim or (claim.user_id != user.id and user.role != UserRole.ADMIN):
         raise HTTPException(status_code=404, detail="Claim not found")
+    ensure_processing_started(db, claim)
     return processing_stages(claim)
+
+
+def ensure_processing_started(db: Session, claim: Claim) -> None:
+    if claim.status not in {ClaimStatus.SUBMITTED, ClaimStatus.PROCESSING}:
+        return
+    if not claim.documents:
+        return
+    if claim.decision_logs or claim.extracted_fields:
+        return
+    if claim.status == ClaimStatus.SUBMITTED:
+        claim.status = ClaimStatus.PROCESSING
+        claim.processing_stage = "OCR Processing"
+        claim.updated_at = utcnow()
+        db.commit()
+        db.refresh(claim)
+    enqueue_claim_processing(claim.id)
 
 
 def serialize_claim_summary(claim: Claim) -> ClaimSummary:

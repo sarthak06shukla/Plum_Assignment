@@ -37,21 +37,36 @@ export default function ClaimDetailsClient() {
   const [error, setError] = useState("");
 
   useEffect(() => {
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const terminalStatuses = ["APPROVED", "REJECTED", "PARTIAL", "PARTIAL_APPROVAL", "MANUAL_REVIEW"];
+
     async function load() {
       try {
         const data = await api.getClaim(params.id);
+        if (cancelled) return;
         setClaim(data);
+        setError("");
+        if (!terminalStatuses.includes(data.status) || !data.extracted_information) {
+          timer = setTimeout(load, 3000);
+        }
       } catch (err: any) {
+        if (cancelled) return;
         if (err instanceof ApiError && err.status === 404) {
           setError("Claim not found");
         } else {
           setError(err.message || "Failed to load claim");
         }
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     }
+
     load();
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
   }, [params.id]);
 
   if (loading) {
