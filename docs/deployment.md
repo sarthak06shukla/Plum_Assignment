@@ -22,7 +22,7 @@ The blueprint sets the required deployment variables:
 |----------|-------|
 | `DATABASE_URL` | From Render PostgreSQL |
 | `JWT_SECRET` | Auto-generated |
-| `CORS_ORIGINS` | GitHub Pages frontend URL |
+| `CORS_ORIGINS` | Vercel frontend URL |
 | `EASYOCR_DOWNLOAD_ENABLED` | `true` |
 | `SEED_DEMO_ON_START` | `true` |
 | `OPENAI_MODEL` | `gpt-4o` |
@@ -56,18 +56,25 @@ curl https://your-render-service.onrender.com/health
 
 ---
 
-## Frontend on GitHub Pages
+## Frontend on Vercel
 
-The frontend is deployed by `.github/workflows/deploy-frontend-pages.yml`.
+Vercel is the recommended frontend host for this Next.js app.
 
-### 1. Enable Pages
+### 1. Import the Repository
 
-- In GitHub, go to **Settings -> Pages**.
-- Set **Build and deployment** to **GitHub Actions**.
+- Open [Vercel](https://vercel.com/new).
+- Import `sarthak06shukla/Plum_Assignment`.
+- Set **Root Directory** to:
+
+```text
+frontend
+```
+
+Vercel will use `frontend/vercel.json` and auto-detect Next.js.
 
 ### 2. Configure Frontend API URL
 
-In **Settings -> Secrets and variables -> Actions -> Variables**, add:
+In Vercel project settings, add:
 
 | Variable | Value |
 |----------|-------|
@@ -75,12 +82,22 @@ In **Settings -> Secrets and variables -> Actions -> Variables**, add:
 
 ### 3. Deploy
 
-Push to `main` or manually run the `Deploy frontend to GitHub Pages` workflow.
+Deploy the Vercel project. Future pushes to `main` deploy automatically.
 
-Frontend URL:
+### 4. Update Render CORS
+
+After Vercel gives you the final frontend URL, set the Render backend environment variable:
+
+| Variable | Value |
+|----------|-------|
+| `CORS_ORIGINS` | Your Vercel URL, e.g. `https://plum-assignment.vercel.app` |
+
+Redeploy the Render backend after updating `CORS_ORIGINS`.
+
+Frontend URL example:
 
 ```text
-https://sarthak06shukla.github.io/Plum_Assignment/
+https://plum-assignment.vercel.app
 ```
 
 ---

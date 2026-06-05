@@ -14,7 +14,7 @@ services:
       - key: JWT_SECRET
         generateValue: true
       - key: CORS_ORIGINS
-        value: https://sarthak06shukla.github.io,https://sarthak06shukla.github.io/Plum_Assignment
+        value: https://plum-assignment.vercel.app,http://localhost:3000
       - key: EASYOCR_DOWNLOAD_ENABLED
         value: "true"
       - key: SEED_DEMO_ON_START
