@@ -1,13 +1,24 @@
+import logging
 from typing import Annotated
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, UploadFile
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from backend.app.api.dependencies import get_current_user
-from backend.app.db.session import get_db
-from backend.app.models.entities import Claim, Document, DocumentType, User, UserRole
+from backend.app.db.session import SessionLocal, get_db
+from backend.app.models.entities import (
+    Claim,
+    ClaimStatus,
+    DecisionLog,
+    Document,
+    DocumentType,
+    ManualReview,
+    User,
+    UserRole,
+    utcnow,
+)
 from backend.app.schemas.claim import ClaimDetail, ClaimSummary, ProcessingStage
 from backend.app.services.audit_service import AuditService
 from backend.app.services.claim_processor import ClaimProcessor
@@ -18,17 +29,19 @@ router = APIRouter(prefix="/claims", tags=["Claims"])
 processor = ClaimProcessor()
 storage = DocumentUploadService()
 audit = AuditService()
+logger = logging.getLogger(__name__)
 
 
 @router.post("", response_model=ClaimDetail)
 async def submit_claim(
+    background_tasks: BackgroundTasks,
     prescription: Annotated[UploadFile, File()],
     medical_bill: Annotated[UploadFile, File()],
     diagnostic_report: Annotated[UploadFile | None, File()] = None,
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ) -> ClaimDetail:
-    claim = Claim(user_id=user.id)
+    claim = Claim(user_id=user.id, processing_stage="Files Uploaded")
     db.add(claim)
     db.flush()
 
@@ -56,11 +69,55 @@ async def submit_claim(
         db.rollback()
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
-    processor.process(db, claim)
     audit.log(db, actor_id=user.id, entity_type="Claim", entity_id=claim.id, action="SUBMIT_CLAIM", payload={})
     db.commit()
     db.refresh(claim)
+    background_tasks.add_task(process_claim_background, claim.id)
     return serialize_claim_detail(claim)
+
+
+def process_claim_background(claim_id: str) -> None:
+    db = SessionLocal()
+    try:
+        claim = db.get(Claim, claim_id)
+        if not claim:
+            logger.warning("Background processing skipped; claim not found: %s", claim_id)
+            return
+        processor.process(db, claim)
+        db.commit()
+        logger.info("Background processing completed for claim %s", claim_id)
+    except Exception as exc:
+        db.rollback()
+        logger.exception("Background processing failed for claim %s: %s", claim_id, exc)
+        _mark_claim_processing_failed(claim_id)
+    finally:
+        db.close()
+
+
+def _mark_claim_processing_failed(claim_id: str) -> None:
+    db = SessionLocal()
+    try:
+        claim = db.get(Claim, claim_id)
+        if not claim:
+            return
+        claim.status = ClaimStatus.MANUAL_REVIEW
+        claim.processing_stage = "Decision Generation"
+        claim.approved_amount = 0
+        claim.confidence_score = 0
+        claim.updated_at = utcnow()
+        db.add(
+            DecisionLog(
+                claim_id=claim.id,
+                decision=ClaimStatus.MANUAL_REVIEW.value,
+                triggered_rule="PROCESSING_FAILED",
+                explanation="Automated claim processing failed after upload.",
+                notes=["The documents were uploaded, but OCR or extraction failed. Manual review is required."],
+            )
+        )
+        db.add(ManualReview(claim_id=claim.id, reason="Automated claim processing failed after upload."))
+        db.commit()
+    finally:
+        db.close()
 
 
 @router.get("", response_model=list[ClaimSummary])
