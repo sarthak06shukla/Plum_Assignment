@@ -1,5 +1,6 @@
 import logging
-from concurrent.futures import ThreadPoolExecutor
+import subprocess
+import sys
 from threading import Lock
 from typing import Annotated
 from pathlib import Path
@@ -23,16 +24,13 @@ from backend.app.models.entities import (
 )
 from backend.app.schemas.claim import ClaimDetail, ClaimSummary, ProcessingStage
 from backend.app.services.audit_service import AuditService
-from backend.app.services.claim_processor import ClaimProcessor
 from backend.app.services.storage_service import DocumentUploadService, UploadValidationError
 
 
 router = APIRouter(prefix="/claims", tags=["Claims"])
-processor = ClaimProcessor()
 storage = DocumentUploadService()
 audit = AuditService()
 logger = logging.getLogger(__name__)
-processing_executor = ThreadPoolExecutor(max_workers=1)
 processing_claim_ids: set[str] = set()
 processing_lock = Lock()
 
@@ -88,27 +86,34 @@ def enqueue_claim_processing(claim_id: str) -> None:
         if claim_id in processing_claim_ids:
             return
         processing_claim_ids.add(claim_id)
-    processing_executor.submit(process_claim_background, claim_id)
-
-
-def process_claim_background(claim_id: str) -> None:
-    db = SessionLocal()
     try:
-        claim = db.get(Claim, claim_id)
-        if not claim:
-            logger.warning("Background processing skipped; claim not found: %s", claim_id)
-            return
-        processor.process(db, claim)
-        db.commit()
-        logger.info("Background processing completed for claim %s", claim_id)
+        completed = subprocess.Popen(
+            [sys.executable, "-m", "backend.app.workers.process_claim", claim_id],
+            stdout=None,
+            stderr=None,
+        )
     except Exception as exc:
-        db.rollback()
-        logger.exception("Background processing failed for claim %s: %s", claim_id, exc)
-        _mark_claim_processing_failed(claim_id)
-    finally:
-        db.close()
+        logger.exception("Could not start claim processor subprocess for %s: %s", claim_id, exc)
         with processing_lock:
             processing_claim_ids.discard(claim_id)
+        _mark_claim_processing_failed(claim_id)
+        return
+
+    logger.info("Started claim processor subprocess pid=%s claim_id=%s", completed.pid, claim_id)
+    _forget_claim_when_process_exits(claim_id, completed)
+
+
+def _forget_claim_when_process_exits(claim_id: str, completed: subprocess.Popen) -> None:
+    import threading
+
+    def wait_for_exit() -> None:
+        return_code = completed.wait()
+        if return_code != 0:
+            logger.error("Claim processor subprocess exited with code=%s claim_id=%s", return_code, claim_id)
+        with processing_lock:
+            processing_claim_ids.discard(claim_id)
+
+    threading.Thread(target=wait_for_exit, daemon=True).start()
 
 
 def _mark_claim_processing_failed(claim_id: str) -> None:
