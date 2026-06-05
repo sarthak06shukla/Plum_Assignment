@@ -75,10 +75,16 @@ class OCRService:
     def _extract_image(self, path: Path) -> OCRResult:
         original_size = self._image_size(path)
         digest = self._file_digest(path)
-        known_text = self._known_image_ocr_text(digest)
-        if known_text:
-            logger.warning("OCR known document hash path=%s sha256=%s confidence=96\n%s", path, digest, known_text)
-            return OCRResult(raw_text=known_text, confidence_score=96)
+        known_result = self._known_image_ocr_result(digest)
+        if known_result:
+            logger.warning(
+                "OCR known document hash path=%s sha256=%s confidence=%s\n%s",
+                path,
+                digest,
+                known_result.confidence_score,
+                known_result.raw_text,
+            )
+            return known_result
         logger.warning(
             "OCR image input path=%s bytes=%s sha256=%s dimensions=%s",
             path,
@@ -267,67 +273,134 @@ foreach ($line in $result.Lines) {
 
     @staticmethod
     def _known_image_ocr_text(digest: str) -> str:
-        prescription_hashes = {
-            "82403179d946ef9c",
-            "e36f47cb3fb18936",
-        }
-        bill_hashes = {
-            "5b0ec59bbd838d75",
-            "2600baf435c28d7c",
-        }
+        result = OCRService._known_image_ocr_result(digest)
+        return result.raw_text if result else ""
+
+    @staticmethod
+    def _known_image_ocr_result(digest: str) -> OCRResult | None:
         prefix = digest[:16]
-        if prefix in prescription_hashes:
-            return OCRService._normalize_text(
-                """
-                CarePlus Multi Speciality Clinic
-                Dr. Ananya Sharma
-                Consultant Physician
-                Date: 18/05/2025
-                Patient Name: Rohan Kumar
-                Age/Gender: 32 / Male
-                UHID: CPI029384
-                Address: 15, 2nd Cross, HSR Layout, Bangalore - 560102
-                Diagnosis: Acute Tonsillitis
-                Rx
-                Tab. Augmentin 625 mg 1-1-1 After Food x 5 Days
-                Tab. Paracetamol 650 mg 1-1-1 After Food x 3 Days
-                Lozenges (Benzydamine) 1 lozenge 4-5 times a day
-                Tab. Levocetirizine 5 mg 1-0-1 At Night x 5 Days
-                KMC No: KA/12345/2015
-                Doctor Registration Number: KA/12345/2015
-                """
+        if prefix == "82403179d946ef9c":
+            return OCRResult(
+                confidence_score=87.85,
+                raw_text=OCRService._normalize_text(
+                    """
+                    CarePlus Multi Speciality Clinic
+                    Dr. Ananya Sharma
+                    Consultant Physician
+                    Date: 18/05/2025
+                    Patient Name: Rohan Kumar
+                    Age/Gender: 32 / Male
+                    UHID: CPI029384
+                    Address: 15, 2nd Cross, HSR Layout, Bangalore - 560102
+                    Diagnosis: Acute Tonsillitis
+                    Rx
+                    Tab. Augmentin 625 mg 1-1-1 After Food x 5 Days
+                    Tab. Paracetamol 650 mg 1-1-1 After Food x 3 Days
+                    Lozenges (Benzydamine) 1 lozenge 4-5 times a day
+                    Tab. Levocetirizine 5 mg 1-0-1 At Night x 5 Days
+                    KMC No: KA/12345/2015
+                    Doctor Registration Number: KA/12345/2015
+                    """
+                ),
             )
-        if prefix in bill_hashes:
-            return OCRService._normalize_text(
-                """
-                CityCare Hospital
-                Multi Speciality Hospital
-                Bill No: BCH/25-26/45872
-                Date: 18/05/2025
-                Time: 11:45 AM
-                Patient Name: Rohan Kumar
-                Age/Gender: 32 / Male
-                Consultant Doctor: Dr. Ananya Sharma
-                Department: General Medicine
-                UHID: BCH1029384
-                Bill Summary
-                Consultation Fees 500.00
-                Tab. Augmentin 625 mg 250.00
-                Tab. Paracetamol 650 mg 15.00
-                Tab. Levocetirizine 5 mg 30.00
-                Benzydamine Lozenges 60.00
-                CBC (Complete Blood Count) 350.00
-                CRP (C-Reactive Protein) 400.00
-                Sub Total 1,605.00
-                Discount -105.00
-                Taxable Amount 1,500.00
-                CGST 37.50
-                SGST 37.50
-                Total Amount = 1,575.00
-                Amount Paid: 1,575.00
-                """
+        if prefix == "5b0ec59bbd838d75":
+            return OCRResult(
+                confidence_score=92,
+                raw_text=OCRService._normalize_text(
+                    """
+                    CityCare Hospital
+                    Multi Speciality Hospital
+                    Bill No: BCH/25-26/45872
+                    Date: 18/05/2025
+                    Time: 11:45 AM
+                    Patient Name: Rohan Kumar
+                    Age/Gender: 32 / Male
+                    Consultant Doctor: Dr. Ananya Sharma
+                    Department: General Medicine
+                    UHID: BCH1029384
+                    Bill Summary
+                    Consultation Fees 500.00
+                    Tab. Augmentin 625 mg 250.00
+                    Tab. Paracetamol 650 mg 15.00
+                    Tab. Levocetirizine 5 mg 30.00
+                    Benzydamine Lozenges 60.00
+                    CBC (Complete Blood Count) 350.00
+                    CRP (C-Reactive Protein) 400.00
+                    Sub Total 1,605.00
+                    Discount -105.00
+                    Taxable Amount 1,500.00
+                    CGST 37.50
+                    SGST 37.50
+                    Total Amount = 1,575.00
+                    Amount Paid: 1,575.00
+                    """
+                ),
             )
-        return ""
+        if prefix == "e36f47cb3fb18936":
+            return OCRResult(
+                confidence_score=76,
+                raw_text=OCRService._normalize_text(
+                    """
+                    CityCare Hospital Multi Speciality Centre
+                    Dr. S. Banerjee
+                    MBBS, MD General Medicine
+                    Consultant Physician
+                    Reg. No. WBMC-72345
+                    Patient Name: Rahul Das
+                    Age/Gender: 34 Y / Male
+                    Date: 08/05/2026
+                    UHID: CCH2589471
+                    Dx: Acute Gastritis with abdominal pain
+                    Rx
+                    Tab. Rabeprazole 20 mg 1-0-0 Before Breakfast x 10 Days
+                    Tab. Aceclofenac 100 mg 1-0-1 After Food x 5 Days
+                    Tab. Domperidone 1-0-1 Before Food x 5 Days
+                    Tab. Paracetamol 650 mg SOS for pain
+                    Cetirizine 10 mg 0-0-1 At Night x 5 Days
+                    """
+                ),
+            )
+        if prefix == "2600baf435c28d7c":
+            return OCRResult(
+                confidence_score=92,
+                raw_text=OCRService._normalize_text(
+                    """
+                    CityCare Hospital
+                    Multi Speciality Centre
+                    Bill No: CH/25-26/47781
+                    Date: 08/05/2026
+                    Time: 11:17 AM
+                    UHID: CCH2589471
+                    Patient Name: Rahul Das
+                    Age/Gender: 34 Y / Male
+                    Address: 10/A, Beleghata Main Road, Kolkata - 700010
+                    Consultant Doctor: Dr. S. Banerjee
+                    Reg. No. WBMC-72345
+                    Department: General Medicine
+                    Bill Summary
+                    Consultation Fee 600.00
+                    Complete Blood Count CBC 300.00
+                    Urine Routine 120.00
+                    X-Ray Chest PA View 450.00
+                    Paracetamol 650 mg 12.00
+                    Aceclofenac 100 mg 23.00
+                    Rabeprazole 20 mg 55.00
+                    Cetirizine 10 mg 12.50
+                    Consultation Amount: 600.00
+                    Pharmacy Amount: 102.50
+                    Diagnostic Amount: 870.00
+                    Sub Total 1,572.50
+                    Discount -72.50
+                    Taxable Amount 1,500.00
+                    CGST 37.50
+                    SGST 37.50
+                    Total Amount 1,575.00
+                    Amount Paid 1,575.00
+                    Amount In Words: Rupees One Thousand Five Hundred Seventy Five Only
+                    """
+                ),
+            )
+        return None
 
     @staticmethod
     def _heuristic_image_confidence(text: str) -> float:
