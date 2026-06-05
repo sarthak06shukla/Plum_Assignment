@@ -19,6 +19,7 @@ type AuthState = {
 
 type AuthContextType = AuthState & {
   login: (email: string, password: string) => Promise<void>;
+  register: (name: string, email: string, password: string) => Promise<void>;
   logout: () => void;
   loading: boolean;
 };
@@ -61,6 +62,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const register = useCallback(
+    async (name: string, email: string, password: string) => {
+      const data = await api.register(email, name, password, "USER");
+      setToken(data.access_token);
+      localStorage.setItem("plum_token", data.access_token);
+      localStorage.setItem("plum_role", data.role);
+      localStorage.setItem("plum_email", email);
+      setState({
+        token: data.access_token,
+        role: data.role,
+        email,
+        isAuthenticated: true,
+      });
+    },
+    [],
+  );
+
   const logout = useCallback(() => {
     setToken(null);
     localStorage.removeItem("plum_token");
@@ -70,7 +88,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ ...state, login, logout, loading }}>
+    <AuthContext.Provider value={{ ...state, login, register, logout, loading }}>
       {children}
     </AuthContext.Provider>
   );

@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 
 from backend.app.core.security import create_access_token, hash_password, verify_password
 from backend.app.db.session import get_db
-from backend.app.models.entities import User
+from backend.app.models.entities import User, UserRole
 from backend.app.schemas.auth import LoginRequest, TokenResponse, UserCreate
 
 
@@ -20,7 +20,7 @@ def register(payload: UserCreate, db: Session = Depends(get_db)) -> TokenRespons
     user = User(
         email=payload.email,
         name=payload.name,
-        role=payload.role,
+        role=UserRole.USER,
         hashed_password=hash_password(payload.password),
     )
     db.add(user)
