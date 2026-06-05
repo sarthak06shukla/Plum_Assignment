@@ -13,3 +13,4 @@ backend/uploads/
 medicalbill-1.jpg
 frontend/.next/
 frontend/node_modules/
+frontend/out/
