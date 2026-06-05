@@ -107,7 +107,13 @@ def _forget_claim_when_process_exits(claim_id: str, completed: subprocess.Popen)
     import threading
 
     def wait_for_exit() -> None:
-        return_code = completed.wait()
+        try:
+            return_code = completed.wait(timeout=240)
+        except subprocess.TimeoutExpired:
+            completed.kill()
+            logger.error("Claim processor subprocess timed out claim_id=%s", claim_id)
+            _mark_claim_processing_failed(claim_id)
+            return_code = -1
         if return_code != 0:
             logger.error("Claim processor subprocess exited with code=%s claim_id=%s", return_code, claim_id)
         with processing_lock:
