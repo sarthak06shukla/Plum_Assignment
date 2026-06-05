@@ -14,7 +14,9 @@ services:
       - key: JWT_SECRET
         generateValue: true
       - key: CORS_ORIGINS
-        value: https://plum-assignment.vercel.app,http://localhost:3000
+        value: https://plum-assignment.vercel.app,https://plum-assignment-sand.vercel.app,http://localhost:3000
+      - key: CORS_ORIGIN_REGEX
+        value: https://.*\.vercel\.app
       - key: EASYOCR_DOWNLOAD_ENABLED
         value: "true"
       - key: SEED_DEMO_ON_START

@@ -25,6 +25,7 @@ class Settings(BaseSettings):
     openai_api_key: str | None = Field(default=None, validation_alias="OPENAI_API_KEY")
     openai_model: str = Field(default="gpt-4o", validation_alias="OPENAI_MODEL")
     cors_origins: str = Field(default="http://localhost:3000", validation_alias="CORS_ORIGINS")
+    cors_origin_regex: str | None = Field(default=None, validation_alias="CORS_ORIGIN_REGEX")
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
