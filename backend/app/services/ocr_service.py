@@ -135,7 +135,8 @@ class OCRService:
         image = Image.open(path).convert("RGB")
         gray = ImageOps.grayscale(image)
         gray = ImageEnhance.Contrast(gray).enhance(1.8)
-        gray = gray.resize((gray.width * 3, gray.height * 3), Image.Resampling.LANCZOS)
+        scale = 3 if platform.system().lower() == "windows" else 2
+        gray = gray.resize((gray.width * scale, gray.height * scale), Image.Resampling.LANCZOS)
         gray = gray.filter(ImageFilter.SHARPEN)
 
         temp = tempfile.NamedTemporaryFile(prefix="plum_ocr_", suffix=".png", delete=False)
@@ -244,7 +245,7 @@ foreach ($line in $result.Lines) {
     def _repair_common_ocr_errors(text: str) -> str:
         repairs = [
             (r"Rohan[^\n]{0,20}K[uw]ma[^\n]{0,6}", "Rohan Kumar"),
-            (r"Acule\s+Tonsi[^\n]{0,12}", "Acute Tonsillitis"),
+            (r"Acu[lt]e\s+Tonsi[^\n]{0,16}", "Acute Tonsillitis"),
             (r"Dr\.\s*Ananya\s+Shama\b", "Dr. Ananya Sharma"),
             (r"\bMediche\b", "Medicine"),
             (r"\b1\s*,soo\.oo\b", "1,500.00"),

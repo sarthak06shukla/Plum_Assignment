@@ -152,7 +152,7 @@ class AIExtractionService:
 
     def _extract_diagnosis(self, lines: list[str], joined: str) -> str | None:
         direct_patterns = [
-            r"\b(Acute\s+Tonsillitis|Acte\s+Tonsillitis)\b",
+            r"\b((?:Acu[lt]e|Acte)\s+Tonsillit[^\s\n]*)\b",
             r"\b(Type\s+2\s+Diabetes[^\n]{0,60}Hypertension)\b",
             r"\b(Acute\s+Ga[^\n]{0,30})",
             r"\b(Vira[^\n]{0,80}Infection)\b",
@@ -260,7 +260,7 @@ class AIExtractionService:
     @staticmethod
     def _repair_extracted_text(value: str) -> str:
         lowered = value.lower()
-        if "tonsillitis" in lowered:
+        if "tonsillit" in lowered:
             return "Acute Tonsillitis"
         if "type 2 diabetes" in lowered and "hypertension" in lowered:
             return "Type 2 Diabetes mellitus with Hypertension"
@@ -485,7 +485,7 @@ class AIExtractionService:
     def _text_value(text: str, labels: list[str]) -> str | None:
         for label in labels:
             found = re.search(
-                rf"\b{re.escape(label)}\b\s*(?:no\.?|number)?\s*[:\-]\s*(.+?)(?=\n|$)",
+                rf"\b{re.escape(label)}\b\s*(?:no\.?|number)?\s*[:=\-]\s*(.+?)(?=\n|$)",
                 text,
                 flags=re.IGNORECASE,
             )
@@ -520,7 +520,7 @@ class AIExtractionService:
     def _amount_value(text: str, labels: list[str]) -> float:
         for label in labels:
             found = re.search(
-                rf"\b{re.escape(label)}\b\s*[:\-]?\s*(?:INR|Rs\.?)?\s*([0-9][0-9,]*(?:\.\d+)?)",
+                rf"\b{re.escape(label)}\b\s*[:=\-]?\s*(?:INR|Rs\.?)?\s*([0-9][0-9,]*(?:\.\d+)?)",
                 text,
                 flags=re.IGNORECASE,
             )

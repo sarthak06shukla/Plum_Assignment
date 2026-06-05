@@ -96,3 +96,38 @@ def test_pdf_ocr_repairs_rohan_claim_amount_and_diagnosis():
     assert result.fields.patient_name == "Rohan Kumar"
     assert result.fields.diagnosis == "Acute Tonsillitis"
     assert result.fields.bill_amount == 1575.0
+
+
+def test_render_tesseract_ocr_extracts_rohan_claim_fields():
+    text = """
+    [PRESCRIPTION]
+    ef CarePlus Dr. Ananya Sharma
+    Date: 18/05/2025
+    Patient Name : Rohan Kumar
+    Age/Gender : 32 / Mate
+    DIAGNOSIS : Acute TonsillitÃ©s
+    Dr. Ananya Sharma
+    KMC No: KA/12345/2015
+
+    [MEDICAL_BILL]
+    CityCare Hospital
+    Patient Name : Rohan Kumar
+    Age/Gender : 32/ Male Consultant Doctor: Dr. Ananya Sharma
+    Consultation Fees 998371 1 $00.00 500.00
+    | Sub Total 1,605.00
+    Discount -105.00
+    | Taxable Amount 1,500.00
+    Total Amount = 1,575.00
+    Amount Paid : % 1,575.00
+    """
+
+    result = AIExtractionService().extract(text)
+
+    assert result.missing_fields == []
+    assert result.fields.patient_name == "Rohan Kumar"
+    assert result.fields.doctor_name == "Dr. Ananya Sharma"
+    assert result.fields.doctor_registration_number == "KA/12345/2015"
+    assert result.fields.diagnosis == "Acute Tonsillitis"
+    assert result.fields.treatment_date.isoformat() == "2025-05-18"
+    assert result.fields.hospital_name == "CityCare Hospital"
+    assert result.fields.bill_amount == 1575.0
