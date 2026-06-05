@@ -1,4 +1,6 @@
-from fastapi import FastAPI, Request
+import re
+
+from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -17,7 +19,35 @@ def create_app() -> FastAPI:
         description="AI-assisted document understanding with deterministic OPD claim adjudication.",
         version="1.0.0",
     )
-    origins = [origin.strip() for origin in settings.cors_origins.split(",") if origin.strip()]
+    origins = [origin.strip().rstrip("/") for origin in settings.cors_origins.split(",") if origin.strip()]
+    origin_set = set(origins)
+    origin_regex = re.compile(settings.cors_origin_regex) if settings.cors_origin_regex else None
+
+    def is_allowed_origin(origin: str | None) -> bool:
+        if not origin:
+            return False
+        normalized = origin.rstrip("/")
+        return normalized in origin_set or bool(origin_regex and origin_regex.fullmatch(normalized))
+
+    def apply_cors_headers(response: Response, origin: str | None) -> Response:
+        if not is_allowed_origin(origin):
+            return response
+        response.headers["Access-Control-Allow-Origin"] = origin.rstrip("/")
+        response.headers["Access-Control-Allow-Credentials"] = "true"
+        response.headers["Access-Control-Allow-Methods"] = "GET,POST,PUT,PATCH,DELETE,OPTIONS"
+        response.headers["Access-Control-Allow-Headers"] = "Authorization,Content-Type,Accept,Origin"
+        response.headers["Access-Control-Max-Age"] = "600"
+        response.headers.add_vary_header("Origin")
+        return response
+
+    @app.middleware("http")
+    async def production_cors_headers(request: Request, call_next):
+        origin = request.headers.get("origin")
+        if request.method == "OPTIONS" and is_allowed_origin(origin):
+            return apply_cors_headers(Response(status_code=204), origin)
+        response = await call_next(request)
+        return apply_cors_headers(response, origin)
+
     app.add_middleware(
         CORSMiddleware,
         allow_origins=origins,

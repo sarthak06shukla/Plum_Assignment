@@ -6,6 +6,13 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 BACKEND_DIR = Path(__file__).resolve().parents[2]
+DEFAULT_CORS_ORIGINS = ",".join(
+    [
+        "http://localhost:3000",
+        "http://localhost:3001",
+        "https://plum-assignment-sand.vercel.app",
+    ]
+)
 
 
 class Settings(BaseSettings):
@@ -25,10 +32,10 @@ class Settings(BaseSettings):
     openai_api_key: str | None = Field(default=None, validation_alias="OPENAI_API_KEY")
     openai_model: str = Field(default="gpt-4o", validation_alias="OPENAI_MODEL")
     cors_origins: str = Field(
-        default="http://localhost:3000,https://plum-assignment.vercel.app,https://plum-assignment-sand.vercel.app",
+        default=DEFAULT_CORS_ORIGINS,
         validation_alias="CORS_ORIGINS",
     )
-    cors_origin_regex: str | None = Field(default=r"https://.*\.vercel\.app", validation_alias="CORS_ORIGIN_REGEX")
+    cors_origin_regex: str | None = Field(default=None, validation_alias="CORS_ORIGIN_REGEX")
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
@@ -38,7 +45,8 @@ class Settings(BaseSettings):
             self.database_url = self.database_url.replace("postgres://", "postgresql+psycopg://", 1)
         elif self.database_url.startswith("postgresql://"):
             self.database_url = self.database_url.replace("postgresql://", "postgresql+psycopg://", 1)
-        self.cors_origin_regex = self.cors_origin_regex or r"https://.*\.vercel\.app"
+        if self.cors_origin_regex == "":
+            self.cors_origin_regex = None
         return self
 
 
