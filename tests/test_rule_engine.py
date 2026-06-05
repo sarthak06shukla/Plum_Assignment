@@ -100,12 +100,28 @@ def test_missing_required_treatment_date_routes_to_manual_review():
     assert "REQUIRED_FIELDS_MISSING" in rule_codes(result)
 
 
-def test_blurry_document_routes_to_manual_review_when_confidence_is_low():
+def test_mid_confidence_document_routes_to_manual_review():
     result = RuleEngine().evaluate(make_input(ocr_confidence=35, extraction_confidence=60))
 
     assert result.decision == Decision.MANUAL_REVIEW
-    assert result.confidence_score < 70
-    assert any("Confidence below 70" in note for note in result.notes)
+    assert 50 <= result.confidence_score < 85
+    assert any("Confidence below 85" in note for note in result.notes)
+
+
+def test_very_low_confidence_rejects_claim():
+    result = RuleEngine().evaluate(make_input(ocr_confidence=20, extraction_confidence=35))
+
+    assert result.decision == Decision.REJECTED
+    assert result.approved_amount == 0
+    assert result.confidence_score < 50
+    assert any("Confidence below 50" in note for note in result.notes)
+
+
+def test_clean_claim_with_confidence_above_85_is_approved():
+    result = RuleEngine().evaluate(make_input(ocr_confidence=90, extraction_confidence=79))
+
+    assert result.decision == Decision.APPROVED
+    assert result.confidence_score >= 85
 
 
 def test_duplicate_claim_routes_to_manual_review_not_rejection():

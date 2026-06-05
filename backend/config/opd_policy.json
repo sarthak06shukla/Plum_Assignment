@@ -20,5 +20,7 @@
     "Metro Diagnostic Center"
   ],
   "doctor_registration_regex": "^[A-Z]{2}/[0-9]{5}/[0-9]{4}$",
-  "manual_review_threshold": 70
+  "auto_approve_threshold": 85,
+  "auto_reject_threshold": 50,
+  "manual_review_threshold": 85
 }

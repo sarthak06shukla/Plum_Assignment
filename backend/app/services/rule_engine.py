@@ -71,9 +71,26 @@ class RuleEngine:
             fraud_findings=fraud_findings,
         )
 
-        decision = self._decision_from_rules(rules, approved_amount, confidence_score, fraud_findings, missing_required_fields)
-        if confidence_score < 70 and decision != Decision.REJECTED:
-            notes.append("Confidence below 70 requires human review before payout.")
+        auto_approve_threshold = self.policy.auto_approve_threshold()
+        auto_reject_threshold = self.policy.auto_reject_threshold()
+
+        decision = self._decision_from_rules(
+            rules,
+            approved_amount,
+            confidence_score,
+            fraud_findings,
+            missing_required_fields,
+            auto_approve_threshold,
+            auto_reject_threshold,
+        )
+        if auto_reject_threshold <= confidence_score < auto_approve_threshold and decision != Decision.REJECTED:
+            notes.append(
+                f"Confidence below {auto_approve_threshold:.0f} requires human review before payout."
+            )
+        if confidence_score < auto_reject_threshold and decision == Decision.REJECTED:
+            notes.append(
+                f"Confidence below {auto_reject_threshold:.0f} is too low for automated reimbursement."
+            )
         if missing_required_fields and decision == Decision.MANUAL_REVIEW:
             notes.append("Required extracted fields are missing and need reviewer verification.")
 
@@ -303,6 +320,8 @@ class RuleEngine:
         confidence_score: float,
         fraud_findings,
         missing_required_fields: int,
+        auto_approve_threshold: float,
+        auto_reject_threshold: float,
     ) -> Decision:
         rejection_codes = {
             "WAITING_PERIOD_NOT_SERVED",
@@ -315,7 +334,9 @@ class RuleEngine:
         }
         if any((not rule.passed and rule.code in rejection_codes) for rule in rules):
             return Decision.REJECTED
-        if fraud_findings or confidence_score < 70 or missing_required_fields:
+        if confidence_score < auto_reject_threshold:
+            return Decision.REJECTED
+        if fraud_findings or confidence_score < auto_approve_threshold or missing_required_fields:
             return Decision.MANUAL_REVIEW
         if approved_amount <= 0:
             return Decision.REJECTED

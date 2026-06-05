@@ -35,5 +35,11 @@ class PolicyEngine:
     def mixed_exclusion_reduction_percent(self) -> float:
         return float(self.policy.get("mixed_exclusion_reduction_percent", 0))
 
+    def auto_approve_threshold(self) -> float:
+        return float(self.policy.get("auto_approve_threshold", self.policy.get("manual_review_threshold", 70)))
+
+    def auto_reject_threshold(self) -> float:
+        return float(self.policy.get("auto_reject_threshold", 50))
+
     def snapshot(self) -> dict[str, Any]:
         return self.policy
