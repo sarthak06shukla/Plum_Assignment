@@ -23,21 +23,36 @@ export default function ClaimProcessingClient() {
   const [error, setError] = useState("");
 
   useEffect(() => {
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const terminalStatuses = ["APPROVED", "REJECTED", "PARTIAL", "PARTIAL_APPROVAL", "MANUAL_REVIEW"];
+
     async function load() {
       try {
         const [stagesData, claimData] = await Promise.all([
           api.getProcessing(params.id),
           api.getClaim(params.id),
         ]);
+        if (cancelled) return;
         setStages(stagesData);
         setClaim(claimData);
+        setError("");
+        if (!terminalStatuses.includes(claimData.status)) {
+          timer = setTimeout(load, 3000);
+        }
       } catch (err: any) {
+        if (cancelled) return;
         setError(err.message || "Failed to load processing status");
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     }
+
     load();
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
   }, [params.id]);
 
   if (loading) {
