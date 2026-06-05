@@ -1,8 +1,9 @@
 import logging
+from threading import Thread
 from typing import Annotated
 from pathlib import Path
 
-from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -34,7 +35,6 @@ logger = logging.getLogger(__name__)
 
 @router.post("", response_model=ClaimDetail)
 async def submit_claim(
-    background_tasks: BackgroundTasks,
     prescription: Annotated[UploadFile, File()],
     medical_bill: Annotated[UploadFile, File()],
     diagnostic_report: Annotated[UploadFile | None, File()] = None,
@@ -72,7 +72,7 @@ async def submit_claim(
     audit.log(db, actor_id=user.id, entity_type="Claim", entity_id=claim.id, action="SUBMIT_CLAIM", payload={})
     db.commit()
     db.refresh(claim)
-    background_tasks.add_task(process_claim_background, claim.id)
+    Thread(target=process_claim_background, args=(claim.id,), daemon=True).start()
     return serialize_claim_detail(claim)
 
 
