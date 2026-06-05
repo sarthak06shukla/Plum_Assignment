@@ -4,6 +4,7 @@ python-multipart==0.0.19
 SQLAlchemy==2.0.36
 psycopg[binary]==3.2.3
 pypdf==5.1.0
+pytesseract==0.3.13
 pydantic==2.10.4
 pydantic-settings==2.7.0
 email-validator==2.2.0

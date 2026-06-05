@@ -1,6 +1,7 @@
 import hashlib
 import logging
 import os
+import platform
 import re
 import subprocess
 import tempfile
@@ -90,14 +91,18 @@ class OCRService:
                 preprocessed_path,
                 preprocessed_size,
             )
-            windows_result = self._extract_image_with_windows_ocr(preprocessed_path)
-            if windows_result.raw_text.strip():
-                repaired_text = self._repair_common_ocr_errors(windows_result.raw_text)
+            primary_result = (
+                self._extract_image_with_windows_ocr(preprocessed_path)
+                if platform.system().lower() == "windows"
+                else self._extract_image_with_tesseract(preprocessed_path)
+            )
+            if primary_result.raw_text.strip():
+                repaired_text = self._repair_common_ocr_errors(primary_result.raw_text)
                 score = self._heuristic_image_confidence(repaired_text)
-                logger.warning("OCR Windows raw text path=%s confidence=%s\n%s", path, score, repaired_text)
+                logger.warning("OCR primary raw text path=%s confidence=%s\n%s", path, score, repaired_text)
                 return OCRResult(raw_text=repaired_text, confidence_score=score)
         except Exception as exc:
-            logger.exception("Windows OCR failed for %s: %s", path, exc)
+            logger.exception("Primary image OCR failed for %s: %s", path, exc)
         finally:
             if preprocessed_path:
                 try:
@@ -138,6 +143,14 @@ class OCRService:
         temp.close()
         gray.save(temp_path)
         return temp_path, gray.size
+
+    def _extract_image_with_tesseract(self, path: Path) -> OCRResult:
+        import pytesseract
+        from PIL import Image
+
+        with Image.open(path) as image:
+            raw_text = self._normalize_text(pytesseract.image_to_string(image, config="--psm 6"))
+        return OCRResult(raw_text=raw_text, confidence_score=self._heuristic_image_confidence(raw_text))
 
     def _extract_image_with_windows_ocr(self, path: Path) -> OCRResult:
         script = r"""

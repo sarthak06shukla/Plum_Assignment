@@ -19,8 +19,6 @@ services:
         value: https://.*\.vercel\.app
       - key: EASYOCR_DOWNLOAD_ENABLED
         value: "true"
-      - key: SEED_DEMO_ON_START
-        value: "true"
       - key: OPENAI_MODEL
         value: gpt-4o
 
